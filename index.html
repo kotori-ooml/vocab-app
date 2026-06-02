@@ -73,6 +73,16 @@ body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #
 .example-item { display:flex; align-items:flex-start; gap:8px; padding:10px 0; border-bottom:1px solid var(--border); }
 .example-item:last-child { border-bottom:none; }
 
+/* SVG pen icon button */
+.btn-edit {
+  background: var(--blue-light); border: none; border-radius: 10px;
+  width: 32px; height: 32px; color: var(--blue); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background .15s;
+}
+.btn-edit:hover { background: #c5e8fd; }
+.btn-edit svg { width: 15px; height: 15px; fill: none; stroke: var(--blue); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 @keyframes bounce{0%,80%,100%{transform:scale(0);opacity:.4}40%{transform:scale(1);opacity:1}}
 @keyframes popIn{0%{transform:scale(0);opacity:0}50%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
@@ -153,8 +163,7 @@ body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #
 
   <div id="word-list" style="margin-bottom:24px"></div>
   <div id="action-btns" style="display:none;flex-direction:column;gap:12px">
-    <button class="btn-green" onclick="startChat()">💬 AI会話練習をはじめる</button>
-    <button class="btn-outline" onclick="startFlash()">📖 フラッシュカード</button>
+    <button class="btn-green" onclick="startFlash()">📖 フラッシュカードをはじめる</button>
   </div>
 </div>
 
@@ -167,27 +176,6 @@ body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #
   </div>
   <div id="flash-card" class="flash-card" onclick="flipCard()"></div>
   <button id="flash-next" class="btn-green" style="display:none" onclick="nextCard()">次へ →</button>
-</div>
-
-<!-- ══ CHAT ══ -->
-<div id="screen-chat" class="screen-flex">
-  <div style="padding:16px 16px 14px;background:var(--card);border-bottom:2px solid var(--border);flex-shrink:0">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <button class="btn-blue-light" onclick="endSession()">← 終了</button>
-      <div style="font-size:15px;font-weight:800">💬 AI会話練習</div>
-      <div id="chat-score" style="font-size:13px;font-weight:700;color:var(--muted)">0/0</div>
-    </div>
-    <div id="chat-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-  </div>
-  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px 16px"></div>
-  <div style="padding:12px 16px 28px;background:var(--card);border-top:2px solid var(--border);display:flex;gap:10px;align-items:flex-end;flex-shrink:0">
-    <textarea id="chat-input" placeholder="英語で話しかけてみよう！" rows="1"
-      style="flex:1;border:2px solid var(--border);border-radius:16px;padding:12px 16px;font-size:15px;font-family:inherit;font-weight:600;color:var(--text);outline:none;resize:none;line-height:1.5;background:var(--bg);transition:border .2s"
-      onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
-      oninput="updateSendBtn()"></textarea>
-    <button id="send-btn" onclick="sendMessage()" style="background:#E0E0E0;border:none;border-radius:16px;padding:12px 18px;color:#fff;font-size:22px;cursor:default;transition:all .15s;line-height:1">→</button>
-  </div>
 </div>
 
 <!-- ══ HISTORY ══ -->
@@ -337,16 +325,16 @@ function renderList() {
             <div style="width:38px;height:38px;border-radius:12px;background:${col.bg};color:${col.fg};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0">${w.word[0].toUpperCase()}</div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                <span style="font-size:15px;font-weight:800">${w.word}</span>
+                <span style="font-size:18px;font-weight:800">${w.word}</span>
                 <span class="pos-badge ${POS_CLASS[w.pos]||'pos-other'}">${POS_LABELS[w.pos]||'その他'}</span>
               </div>
               <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:2px">${w.meaning}</div>
             </div>
             ${badge}
-            <button onclick="openWordModal(${w.id})" style="background:var(--blue-light);border:none;border-radius:10px;padding:6px 10px;color:var(--blue);cursor:pointer;font-size:13px;font-weight:800;flex-shrink:0">編集</button>
-            <button onclick="deleteWord(${w.id})" style="background:#FFF0F0;border:none;border-radius:10px;width:30px;height:30px;color:#FF8080;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>
+            <button onclick="openWordModal(${w.id})" class="btn-edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button onclick="deleteWord(${w.id})" style="background:#FFF0F0;border:none;border-radius:10px;width:32px;height:32px;color:#FF8080;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>
           </div>
-          ${exCount>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">${(w.examples||[]).slice(0,1).map(e=>`<div style="font-size:12px;color:var(--muted);font-style:italic">📝 ${e}</div>`).join('')}${exCount>1?`<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px">+${exCount-1}件の例文</div>`:''}</div>`:''}
+          ${exCount>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">${(w.examples||[]).slice(0,1).map(e=>`<div style="font-size:12px;color:var(--muted);font-style:italic">${e}</div>`).join('')}${exCount>1?`<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px">+${exCount-1}件の例文</div>`:''}</div>`:''}
         </div>`;
       }).join('');
 
