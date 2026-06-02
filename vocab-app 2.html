@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Practice</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #F7F7F7; color: #3C3C3C; min-height: 100vh; }
+:root {
+  --green: #58CC02; --green-dark: #46A302; --green-light: #D7F5B1;
+  --blue: #1CB0F6; --blue-dark: #0B9AD6; --blue-light: #DFF4FF;
+  --purple: #CE82FF; --purple-light: #F0D9FF;
+  --yellow: #FFC800; --yellow-light: #FFF3B0;
+  --red: #FF4B4B; --red-light: #FFE0E0;
+  --orange: #FF9600; --orange-light: #FFE8CC;
+  --card: #FFFFFF; --bg: #F7F7F7; --border: #E5E5E5; --muted: #AFAFAF; --text: #3C3C3C;
+}
+.screen { display: none; max-width: 480px; margin: 0 auto; padding: 32px 16px 48px; }
+.screen.active { display: block; }
+.screen-flex { display: none; flex-direction: column; max-width: 480px; margin: 0 auto; height: 100vh; }
+.screen-flex.active { display: flex; }
+
+.btn-green { width:100%; padding:17px; background:var(--green); border:none; border-radius:16px; color:#fff; font-size:17px; font-weight:800; cursor:pointer; box-shadow:0 5px 0 var(--green-dark); transition:all .1s; font-family:inherit; display:block; text-align:center; }
+.btn-green:active { transform:translateY(4px); box-shadow:none; }
+.btn-outline { width:100%; padding:15px; background:var(--card); border:2px solid var(--border); border-radius:16px; color:var(--blue); font-size:15px; font-weight:800; cursor:pointer; font-family:inherit; transition:all .15s; display:block; text-align:center; }
+.btn-outline:hover { border-color:var(--blue); background:var(--blue-light); }
+.btn-ghost { background:none; border:none; color:var(--muted); cursor:pointer; font-size:22px; padding:4px; }
+.btn-blue-light { background:var(--blue-light); border:none; border-radius:12px; padding:6px 14px; color:var(--blue); font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }
+.btn-sm { border:none; border-radius:8px; padding:4px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+.card { background:var(--card); border-radius:20px; padding:18px; box-shadow:0 2px 12px rgba(0,0,0,0.06); }
+.input-field { border:2px solid var(--border); border-radius:12px; padding:10px 14px; font-size:14px; font-weight:600; font-family:inherit; color:var(--text); background:var(--bg); outline:none; transition:border .2s; width:100%; }
+.input-field:focus { border-color:var(--blue); }
+.progress-wrap { flex:1; background:#E5E5E5; border-radius:8px; height:12px; overflow:hidden; margin:0 16px; }
+.progress-fill { height:100%; background:var(--green); border-radius:8px; transition:width .4s ease; }
+.flash-card { border-radius:24px; padding:48px 32px; text-align:center; cursor:pointer; min-height:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:all .3s ease; user-select:none; margin-bottom:20px; border:3px solid transparent; }
+.chip { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:800; display:inline-block; transition:all .4s ease; border:2px solid transparent; }
+.chip-used { background:var(--green-light); color:#46A302; border-color:var(--green); }
+.chip-unused { background:#F0F0F0; color:var(--muted); }
+.bubble-ai { max-width:76%; padding:12px 16px; border-radius:18px 18px 18px 4px; background:var(--card); color:var(--text); font-size:15px; line-height:1.65; font-weight:500; box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+.bubble-user { max-width:76%; padding:12px 16px; border-radius:18px 18px 4px 18px; background:var(--blue); color:#fff; font-size:15px; line-height:1.65; font-weight:500; box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+#toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px); background:var(--green); color:#fff; border-radius:20px; padding:10px 20px; font-size:15px; font-weight:800; z-index:200; box-shadow:0 4px 20px rgba(88,204,2,0.4); transition:transform .3s ease; white-space:nowrap; }
+#toast.show { transform:translateX(-50%) translateY(0); }
+#celebration { position:fixed; top:0; left:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; pointer-events:none; z-index:100; font-size:80px; }
+#celebration.show { display:flex; animation:popIn .8s ease; }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--muted); display:inline-block; margin:0 3px; animation:bounce 1s ease infinite; }
+.dot:nth-child(2){animation-delay:.18s} .dot:nth-child(3){animation-delay:.36s}
+.hl { background:#FFF3B0; border-radius:4px; padding:1px 3px; font-weight:700; color:#E5900A; }
+.mastery-bar-wrap { background:#F0F0F0; border-radius:8px; height:10px; overflow:hidden; flex:1; }
+.mastery-bar-fill { height:100%; border-radius:8px; transition:width .6s ease; }
+
+/* POS badge */
+.pos-badge { display:inline-block; padding:2px 8px; border-radius:8px; font-size:11px; font-weight:800; }
+.pos-noun { background:#DFF4FF; color:#1CB0F6; }
+.pos-verb { background:#D7F5B1; color:#46A302; }
+.pos-adj { background:#F0D9FF; color:#9B59B6; }
+.pos-adv { background:#FFF3B0; color:#E5900A; }
+.pos-other { background:#F0F0F0; color:#AFAFAF; }
+
+/* Sort/filter bar */
+.filter-bar { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px; scrollbar-width:none; }
+.filter-bar::-webkit-scrollbar { display:none; }
+.filter-chip { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:700; border:2px solid var(--border); background:var(--card); color:var(--muted); cursor:pointer; white-space:nowrap; font-family:inherit; transition:all .15s; flex-shrink:0; }
+.filter-chip.active { background:var(--blue-light); color:var(--blue); border-color:var(--blue); }
+
+/* Modal */
+#modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:150; align-items:flex-end; justify-content:center; }
+#modal-overlay.show { display:flex; }
+#modal-box { background:var(--card); border-radius:24px 24px 0 0; padding:24px 20px 40px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; animation:slideUp .3s ease; }
+
+/* Example item */
+.example-item { display:flex; align-items:flex-start; gap:8px; padding:10px 0; border-bottom:1px solid var(--border); }
+.example-item:last-child { border-bottom:none; }
+
+@keyframes bounce{0%,80%,100%{transform:scale(0);opacity:.4}40%{transform:scale(1);opacity:1}}
+@keyframes popIn{0%{transform:scale(0);opacity:0}50%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div id="toast">🎉 使えた！</div>
+<div id="celebration">⭐</div>
+
+<!-- Modal -->
+<div id="modal-overlay" onclick="closeModal()">
+  <div id="modal-box" onclick="event.stopPropagation()">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ══ WORD LIST ══ -->
+<div id="screen-list" class="screen active">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div>
+      <div style="font-size:22px;font-weight:800">📚 単語帳</div>
+      <div style="font-size:13px;color:var(--muted);font-weight:600;margin-top:2px">覚えて、使いこなそう！</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div id="streak-badge" style="display:none;background:var(--yellow-light);border-radius:12px;padding:6px 12px;font-size:13px;font-weight:800;color:#E5900A"></div>
+      <button class="btn-blue-light" onclick="showHistory()">📋 記録</button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="position:relative;margin-bottom:12px">
+    <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px">🔍</span>
+    <input id="search-input" class="input-field" placeholder="単語を検索..." style="padding-left:40px" oninput="renderList()">
+  </div>
+
+  <!-- Sort & Filter -->
+  <div class="filter-bar" id="filter-bar">
+    <button class="filter-chip active" data-filter="all" onclick="setFilter('all')">すべて</button>
+    <button class="filter-chip" data-filter="noun" onclick="setFilter('noun')">名詞</button>
+    <button class="filter-chip" data-filter="verb" onclick="setFilter('verb')">動詞</button>
+    <button class="filter-chip" data-filter="adj" onclick="setFilter('adj')">形容詞</button>
+    <button class="filter-chip" data-filter="adv" onclick="setFilter('adv')">副詞</button>
+    <button class="filter-chip" data-filter="other" onclick="setFilter('other')">その他</button>
+    <button class="filter-chip" data-sort="added" onclick="setSort('added')">追加順</button>
+    <button class="filter-chip" data-sort="alpha" onclick="setSort('alpha')">A→Z</button>
+  </div>
+
+  <!-- Add word -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:12px">＋ 単語を追加</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="inp-word" class="input-field" placeholder="English word" style="flex:1" onkeydown="if(event.key==='Enter')focusNext()">
+      <input id="inp-meaning" class="input-field" placeholder="意味" style="flex:1.3" onkeydown="if(event.key==='Enter')addWord()">
+      <button onclick="addWord()" style="background:var(--green);border:none;border-radius:12px;padding:10px 16px;color:#fff;font-size:22px;cursor:pointer;font-weight:800;line-height:1;box-shadow:0 4px 0 var(--green-dark)" onmousedown="this.style.transform='translateY(3px)';this.style.boxShadow='none'" onmouseup="this.style.transform='';this.style.boxShadow='0 4px 0 var(--green-dark)'">+</button>
+    </div>
+    <!-- POS selector -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--muted);line-height:28px">品詞:</span>
+      <button class="filter-chip active" data-pos="noun" onclick="selectPOS('noun')" style="padding:4px 10px;font-size:12px">名詞</button>
+      <button class="filter-chip" data-pos="verb" onclick="selectPOS('verb')" style="padding:4px 10px;font-size:12px">動詞</button>
+      <button class="filter-chip" data-pos="adj" onclick="selectPOS('adj')" style="padding:4px 10px;font-size:12px">形容詞</button>
+      <button class="filter-chip" data-pos="adv" onclick="selectPOS('adv')" style="padding:4px 10px;font-size:12px">副詞</button>
+      <button class="filter-chip" data-pos="other" onclick="selectPOS('other')" style="padding:4px 10px;font-size:12px">その他</button>
+    </div>
+  </div>
+
+  <div id="word-list" style="margin-bottom:24px"></div>
+  <div id="action-btns" style="display:none;flex-direction:column;gap:12px">
+    <button class="btn-green" onclick="startChat()">💬 AI会話練習をはじめる</button>
+    <button class="btn-outline" onclick="startFlash()">📖 フラッシュカード</button>
+  </div>
+</div>
+
+<!-- ══ FLASHCARD ══ -->
+<div id="screen-flash" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <button class="btn-ghost" onclick="showList()">✕</button>
+    <div class="progress-wrap"><div id="flash-progress" class="progress-fill" style="width:0%"></div></div>
+    <span id="flash-counter" style="font-size:13px;font-weight:800;color:var(--muted)"></span>
+  </div>
+  <div id="flash-card" class="flash-card" onclick="flipCard()"></div>
+  <button id="flash-next" class="btn-green" style="display:none" onclick="nextCard()">次へ →</button>
+</div>
+
+<!-- ══ CHAT ══ -->
+<div id="screen-chat" class="screen-flex">
+  <div style="padding:16px 16px 14px;background:var(--card);border-bottom:2px solid var(--border);flex-shrink:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button class="btn-blue-light" onclick="endSession()">← 終了</button>
+      <div style="font-size:15px;font-weight:800">💬 AI会話練習</div>
+      <div id="chat-score" style="font-size:13px;font-weight:700;color:var(--muted)">0/0</div>
+    </div>
+    <div id="chat-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px 16px"></div>
+  <div style="padding:12px 16px 28px;background:var(--card);border-top:2px solid var(--border);display:flex;gap:10px;align-items:flex-end;flex-shrink:0">
+    <textarea id="chat-input" placeholder="英語で話しかけてみよう！" rows="1"
+      style="flex:1;border:2px solid var(--border);border-radius:16px;padding:12px 16px;font-size:15px;font-family:inherit;font-weight:600;color:var(--text);outline:none;resize:none;line-height:1.5;background:var(--bg);transition:border .2s"
+      onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+      oninput="updateSendBtn()"></textarea>
+    <button id="send-btn" onclick="sendMessage()" style="background:#E0E0E0;border:none;border-radius:16px;padding:12px 18px;color:#fff;font-size:22px;cursor:default;transition:all .15s;line-height:1">→</button>
+  </div>
+</div>
+
+<!-- ══ HISTORY ══ -->
+<div id="screen-history" class="screen">
+  <button class="btn-blue-light" onclick="showList()" style="margin-bottom:24px">← 単語帳</button>
+  <h2 style="font-size:24px;font-weight:800;margin-bottom:20px">📋 練習の記録</h2>
+  <div id="mastery-section"></div>
+  <div id="session-list"></div>
+</div>
+
+<!-- ══ DETAIL ══ -->
+<div id="screen-detail" class="screen">
+  <button class="btn-blue-light" onclick="showHistory()" style="margin-bottom:20px">← 戻る</button>
+  <div id="detail-content"></div>
+</div>
+
+<script>
+// ── State ──
+let words = JSON.parse(localStorage.getItem('vocab_words')||'null') || [
+  {id:1, word:'resilient', meaning:'困難から立ち直る力がある', pos:'adj', examples:['She is resilient in the face of failure.']},
+  {id:2, word:'ambiguous', meaning:'曖昧な・多義的な', pos:'adj', examples:['The instructions were ambiguous.']},
+  {id:3, word:'meticulous', meaning:'細部まで注意を払う', pos:'adj', examples:['He is meticulous about his work.']},
+];
+let mastery = JSON.parse(localStorage.getItem('vocab_mastery')||'{}');
+let sessions = JSON.parse(localStorage.getItem('vocab_sessions')||'[]');
+let messages = [], usedWords = new Set();
+let flashIndex = 0, flipped = false, chatLoading = false;
+let currentFilter = 'all', currentSort = 'added', selectedPOS = 'noun';
+
+const COLORS = [
+  {bg:'#DFF4FF',accent:'#1CB0F6'},{bg:'#F0D9FF',accent:'#CE82FF'},
+  {bg:'#D7F5B1',accent:'#58CC02'},{bg:'#FFF3B0',accent:'#FFC800'},
+];
+const POS_LABELS = {noun:'名詞',verb:'動詞',adj:'形容詞',adv:'副詞',other:'その他'};
+const POS_CLASS = {noun:'pos-noun',verb:'pos-verb',adj:'pos-adj',adv:'pos-adv',other:'pos-other'};
+const AVATAR_COLORS = [
+  {bg:'#DFF4FF',fg:'#1CB0F6'},{bg:'#F0D9FF',fg:'#CE82FF'},
+  {bg:'#D7F5B1',fg:'#46A302'},{bg:'#FFF3B0',fg:'#E5900A'},
+];
+
+function saveAll() {
+  localStorage.setItem('vocab_words', JSON.stringify(words));
+  localStorage.setItem('vocab_mastery', JSON.stringify(mastery));
+  localStorage.setItem('vocab_sessions', JSON.stringify(sessions));
+}
+
+// ── Navigation ──
+function showScreen(id) {
+  document.querySelectorAll('.screen,.screen-flex').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showList() { renderList(); showScreen('screen-list'); }
+function showHistory() { renderHistory(); showScreen('screen-history'); }
+
+// ── Filter / Sort ──
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active', b.dataset.filter===f));
+  renderList();
+}
+function setSort(s) {
+  currentSort = s;
+  document.querySelectorAll('[data-sort]').forEach(b=>b.classList.toggle('active', b.dataset.sort===s));
+  renderList();
+}
+function selectPOS(p) {
+  selectedPOS = p;
+  document.querySelectorAll('[data-pos]').forEach(b=>b.classList.toggle('active', b.dataset.pos===p));
+}
+
+function getFilteredWords() {
+  const q = document.getElementById('search-input')?.value.trim().toLowerCase() || '';
+  let list = words.filter(w => {
+    const matchFilter = currentFilter === 'all' || w.pos === currentFilter;
+    const matchSearch = !q || w.word.toLowerCase().includes(q) || w.meaning.includes(q);
+    return matchFilter && matchSearch;
+  });
+  if (currentSort === 'alpha') list = [...list].sort((a,b)=>a.word.localeCompare(b.word));
+  return list;
+}
+
+// ── Word List ──
+function focusNext() { document.getElementById('inp-meaning').focus(); }
+
+function addWord() {
+  const w = document.getElementById('inp-word').value.trim();
+  const m = document.getElementById('inp-meaning').value.trim();
+  if (!w || !m) return;
+  words.push({id:Date.now(), word:w, meaning:m, pos:selectedPOS, examples:[]});
+  saveAll(); renderList();
+  document.getElementById('inp-word').value = '';
+  document.getElementById('inp-meaning').value = '';
+  document.getElementById('inp-word').focus();
+}
+
+function deleteWord(id) {
+  if (!confirm('この単語を削除しますか？')) return;
+  words = words.filter(w=>w.id!==id); saveAll(); renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('word-list');
+  const filtered = getFilteredWords();
+
+  list.innerHTML = filtered.length === 0
+    ? `<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:15px">${words.length===0?'単語を追加してね！ 👆':'該当する単語がありません'}</div>`
+    : filtered.map((w,i) => {
+        const col = AVATAR_COLORS[i%4];
+        const count = mastery[w.word]||0;
+        const badge = count>0 ? `<div style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:800;background:${count>=5?'var(--green-light)':'var(--yellow-light)'};color:${count>=5?'var(--green-dark)':'#E5900A'};flex-shrink:0">${count}回</div>` : '';
+        const exCount = (w.examples||[]).length;
+        return `<div style="background:var(--card);border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,0.05)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:38px;height:38px;border-radius:12px;background:${col.bg};color:${col.fg};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0">${w.word[0].toUpperCase()}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:15px;font-weight:800">${w.word}</span>
+                <span class="pos-badge ${POS_CLASS[w.pos]||'pos-other'}">${POS_LABELS[w.pos]||'その他'}</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:2px">${w.meaning}</div>
+            </div>
+            ${badge}
+            <button onclick="openWordModal(${w.id})" style="background:var(--blue-light);border:none;border-radius:10px;padding:6px 10px;color:var(--blue);cursor:pointer;font-size:13px;font-weight:800;flex-shrink:0">編集</button>
+            <button onclick="deleteWord(${w.id})" style="background:#FFF0F0;border:none;border-radius:10px;width:30px;height:30px;color:#FF8080;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>
+          </div>
+          ${exCount>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">${(w.examples||[]).slice(0,1).map(e=>`<div style="font-size:12px;color:var(--muted);font-style:italic">📝 ${e}</div>`).join('')}${exCount>1?`<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px">+${exCount-1}件の例文</div>`:''}</div>`:''}
+        </div>`;
+      }).join('');
+
+  const streak = sessions.length;
+  const badge = document.getElementById('streak-badge');
+  if (streak>0){badge.style.display='block';badge.textContent='🔥 '+streak;}
+  else badge.style.display='none';
+  document.getElementById('action-btns').style.display = words.length>0?'flex':'none';
+}
+
+// ── Word Edit Modal ──
+function openWordModal(id) {
+  const w = words.find(x=>x.id===id);
+  if (!w) return;
+  const examples = w.examples||[];
+
+  document.getElementById('modal-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">${w.word}</div>
+      <button onclick="closeModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+
+    <!-- 単語・意味 -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px">単語</div>
+      <input id="edit-word" class="input-field" value="${escAttr(w.word)}">
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px">意味</div>
+      <input id="edit-meaning" class="input-field" value="${escAttr(w.meaning)}">
+    </div>
+
+    <!-- 品詞 -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:8px">品詞</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${Object.entries(POS_LABELS).map(([k,v])=>`<button class="filter-chip${w.pos===k?' active':''}" data-edit-pos="${k}" onclick="selectEditPOS('${k}')" style="padding:4px 12px;font-size:12px">${v}</button>`).join('')}
+      </div>
+    </div>
+
+    <!-- 例文 -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:10px">例文 (${examples.length}件)</div>
+      <div id="example-list">
+        ${examples.map((e,i)=>renderExampleItem(e,i,id)).join('')}
+      </div>
+      <!-- 新規例文追加 -->
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="new-example-inp" class="input-field" placeholder="例文を追加..." style="flex:1" onkeydown="if(event.key==='Enter')addExample(${id})">
+        <button onclick="addExample(${id})" style="background:var(--green);border:none;border-radius:12px;padding:10px 14px;color:#fff;font-weight:800;cursor:pointer;font-size:18px;flex-shrink:0">+</button>
+      </div>
+    </div>
+
+    <button onclick="saveWordEdit(${id})" class="btn-green" style="margin-top:8px">保存する</button>
+  `;
+
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function renderExampleItem(example, index, wordId) {
+  return `<div class="example-item" id="ex-item-${index}">
+    <div style="flex:1">
+      <div id="ex-display-${index}" style="font-size:13px;color:var(--text);font-style:italic;line-height:1.5">${escHtml(example)}</div>
+      <input id="ex-edit-${index}" class="input-field" value="${escAttr(example)}" style="display:none;font-size:13px;padding:6px 10px;margin-top:4px">
+    </div>
+    <div style="display:flex;gap:4px;flex-shrink:0;margin-top:2px">
+      <button class="btn-sm" id="ex-edit-btn-${index}" style="background:var(--blue-light);color:var(--blue)" onclick="toggleExEdit(${index})">✏️</button>
+      <button class="btn-sm" id="ex-save-btn-${index}" style="background:var(--green-light);color:var(--green-dark);display:none" onclick="saveExEdit(${wordId},${index})">✓</button>
+      <button class="btn-sm" style="background:#FFF0F0;color:#FF8080" onclick="deleteExample(${wordId},${index})">×</button>
+    </div>
+  </div>`;
+}
+
+function toggleExEdit(i) {
+  const display = document.getElementById(`ex-display-${i}`);
+  const inp = document.getElementById(`ex-edit-${i}`);
+  const editBtn = document.getElementById(`ex-edit-btn-${i}`);
+  const saveBtn = document.getElementById(`ex-save-btn-${i}`);
+  const editing = inp.style.display === 'none';
+  display.style.display = editing ? 'none' : 'block';
+  inp.style.display = editing ? 'block' : 'none';
+  editBtn.style.display = editing ? 'none' : 'inline-block';
+  saveBtn.style.display = editing ? 'inline-block' : 'none';
+  if (editing) inp.focus();
+}
+
+function saveExEdit(wordId, index) {
+  const w = words.find(x=>x.id===wordId);
+  if (!w) return;
+  const val = document.getElementById(`ex-edit-${index}`).value.trim();
+  if (!val) return;
+  w.examples[index] = val;
+  saveAll();
+  document.getElementById(`ex-display-${index}`).textContent = val;
+  toggleExEdit(index);
+}
+
+function deleteExample(wordId, index) {
+  const w = words.find(x=>x.id===wordId);
+  if (!w) return;
+  w.examples.splice(index, 1);
+  saveAll();
+  // Re-render example list
+  document.getElementById('example-list').innerHTML = w.examples.map((e,i)=>renderExampleItem(e,i,wordId)).join('');
+}
+
+function addExample(wordId) {
+  const inp = document.getElementById('new-example-inp');
+  const val = inp.value.trim();
+  if (!val) return;
+  const w = words.find(x=>x.id===wordId);
+  if (!w) return;
+  w.examples = w.examples||[];
+  w.examples.push(val);
+  saveAll();
+  inp.value = '';
+  document.getElementById('example-list').innerHTML = w.examples.map((e,i)=>renderExampleItem(e,i,wordId)).join('');
+}
+
+let editingPOS = null;
+function selectEditPOS(p) {
+  editingPOS = p;
+  document.querySelectorAll('[data-edit-pos]').forEach(b=>b.classList.toggle('active', b.dataset.editPos===p));
+}
+
+function saveWordEdit(id) {
+  const w = words.find(x=>x.id===id);
+  if (!w) return;
+  const newWord = document.getElementById('edit-word').value.trim();
+  const newMeaning = document.getElementById('edit-meaning').value.trim();
+  if (!newWord||!newMeaning) return;
+  w.word = newWord;
+  w.meaning = newMeaning;
+  if (editingPOS) w.pos = editingPOS;
+  saveAll(); closeModal(); renderList();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  editingPOS = null;
+}
+
+// ── Flashcard ──
+function startFlash() {
+  const list = getFilteredWords();
+  if (list.length===0) return;
+  flashIndex=0; flipped=false;
+  renderFlash(list); showScreen('screen-flash');
+}
+
+function renderFlash(list) {
+  list = list || getFilteredWords();
+  const card = list[flashIndex];
+  const col = COLORS[flashIndex%COLORS.length];
+  document.getElementById('flash-progress').style.width = ((flashIndex+1)/list.length*100)+'%';
+  document.getElementById('flash-counter').textContent = `${flashIndex+1}/${list.length}`;
+  const fc = document.getElementById('flash-card');
+  const count = mastery[card.word]||0;
+  const examples = card.examples||[];
+
+  if (!flipped) {
+    fc.style.background=col.bg; fc.style.borderColor=col.accent+'44'; fc.style.boxShadow=`0 8px 0 ${col.accent}22`;
+    fc.innerHTML = `
+      <div style="font-size:36px;font-weight:800;color:${col.accent};margin-bottom:8px">${card.word}</div>
+      <span class="pos-badge ${POS_CLASS[card.pos]||'pos-other'}" style="margin-bottom:14px">${POS_LABELS[card.pos]||'その他'}</span>
+      ${count>0?`<div style="background:var(--yellow-light);border-radius:12px;padding:4px 12px;font-size:12px;font-weight:800;color:#E5900A;margin-bottom:12px">🔥 ${count}回使用済み</div>`:''}
+      <div style="font-size:13px;color:${col.accent}99;font-weight:700;letter-spacing:.1em;margin-top:8px">タップして意味を見る 👆</div>`;
+    document.getElementById('flash-next').style.display='none';
+  } else {
+    fc.style.background='#fff'; fc.style.borderColor=col.accent+'33'; fc.style.boxShadow='0 8px 30px rgba(0,0,0,0.1)';
+    fc.innerHTML = `
+      <div style="font-size:20px;font-weight:800;color:${col.accent};margin-bottom:8px">${card.word}</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);line-height:1.6;margin-bottom:14px">${card.meaning}</div>
+      ${examples.length>0?`<div style="width:100%">${examples.map(e=>`<div style="font-size:13px;color:var(--muted);font-style:italic;line-height:1.6;background:#F7F7F7;border-radius:12px;padding:8px 12px;margin-bottom:6px;text-align:left">"${escHtml(e)}"</div>`).join('')}</div>`:''}`;
+    const nb=document.getElementById('flash-next');
+    nb.style.display='block';
+    nb.textContent = flashIndex===list.length-1?'🎉 完了！':'次へ →';
+  }
+}
+
+function flipCard() { flipped=!flipped; renderFlash(); }
+
+function nextCard() {
+  celebrate();
+  const list = getFilteredWords();
+  if (flashIndex<list.length-1){flashIndex++;flipped=false;setTimeout(()=>renderFlash(list),200);}
+  else setTimeout(()=>showList(),1000);
+}
+
+function celebrate() {
+  const el=document.getElementById('celebration');
+  el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),900);
+}
+
+// ── Chat ──
+const SYSTEM_PROMPT = () => `You are a fun, encouraging English coach helping a Japanese student practice vocabulary. Be warm, brief, and playful.
+
+Today's target words: ${words.map(w=>`"${w.word}" (${w.meaning}, ${POS_LABELS[w.pos]||''})`).join(', ')}
+
+Rules:
+1. Short, natural English conversation.
+2. Encourage using target words naturally.
+3. Celebrate correct usage: "🎉 Great use of '___'!"
+4. Gently correct errors + brief Japanese note in parentheses.
+5. Keep replies 2-3 sentences max.
+6. Nudge after a few turns: "Can you try using '___' next?"
+
+Start with a warm greeting and a question that leads toward using one of the target words.`;
+
+async function startChat() {
+  messages=[]; usedWords=new Set(); chatLoading=true;
+  showScreen('screen-chat');
+  renderChatChips(); updateChatScore();
+  document.getElementById('chat-messages').innerHTML='';
+  showTyping();
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT(),messages:[{role:'user',content:"Hello! I'm ready to practice!"}]}),
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||"Let's go! 🎉";
+    messages=[{role:'user',content:"Hello! I'm ready to practice!"},{role:'assistant',content:reply}];
+    hideTyping(); appendBubble('assistant',reply);
+  } catch { hideTyping(); appendBubble('assistant',"Oops! Connection error 🙏"); }
+  chatLoading=false; updateSendBtn();
+}
+
+async function sendMessage() {
+  const inp=document.getElementById('chat-input');
+  const text=inp.value.trim();
+  if(!text||chatLoading)return;
+  inp.value=''; updateSendBtn();
+  let newlyUsed=null;
+  words.forEach(w=>{if(text.toLowerCase().includes(w.word.toLowerCase())&&!usedWords.has(w.word)){usedWords.add(w.word);newlyUsed=w.word;}});
+  if(newlyUsed) showToast(`🎉 "${newlyUsed}" 使えた！`);
+  renderChatChips(); updateChatScore();
+  messages.push({role:'user',content:text});
+  appendBubble('user',text);
+  chatLoading=true; showTyping();
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT(),messages}),
+    });
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'...';
+    messages.push({role:'assistant',content:reply});
+    hideTyping(); appendBubble('assistant',reply);
+  } catch { hideTyping(); appendBubble('assistant',"Oops! Try again 🙏"); }
+  chatLoading=false; updateSendBtn();
+}
+
+function appendBubble(role,text) {
+  const wrap=document.createElement('div');
+  wrap.style.cssText=`margin-bottom:14px;display:flex;justify-content:${role==='user'?'flex-end':'flex-start'};align-items:flex-end;gap:8px;animation:slideDown .3s ease`;
+  if(role==='assistant'){const av=document.createElement('div');av.style.cssText='width:32px;height:32px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0';av.textContent='🦜';wrap.appendChild(av);}
+  const bub=document.createElement('div');
+  bub.className=role==='user'?'bubble-user':'bubble-ai';
+  bub.innerHTML=role==='assistant'?highlightWords(text):escHtml(text);
+  wrap.appendChild(bub);
+  document.getElementById('chat-messages').appendChild(wrap);
+  wrap.scrollIntoView({behavior:'smooth',block:'end'});
+}
+
+let typingEl=null;
+function showTyping(){typingEl=document.createElement('div');typingEl.style.cssText='margin-bottom:14px;display:flex;align-items:flex-end;gap:8px';typingEl.innerHTML='<div style="width:32px;height:32px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:16px">🦜</div><div class="bubble-ai"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';document.getElementById('chat-messages').appendChild(typingEl);typingEl.scrollIntoView({behavior:'smooth',block:'end'});}
+function hideTyping(){if(typingEl){typingEl.remove();typingEl=null;}}
+
+function highlightWords(text){let r=escHtml(text);words.forEach(w=>{const re=new RegExp(`(${escRegex(w.word)})`,'gi');r=r.replace(re,'<span class="hl">$1</span>');});return r;}
+function escHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(t){return t.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function escRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+
+function renderChatChips(){document.getElementById('chat-chips').innerHTML=words.map(w=>`<div class="chip ${usedWords.has(w.word)?'chip-used':'chip-unused'}">${usedWords.has(w.word)?'✓ ':''}${w.word}</div>`).join('');}
+function updateChatScore(){document.getElementById('chat-score').textContent=`${usedWords.size}/${words.length}`;}
+function updateSendBtn(){const btn=document.getElementById('send-btn');const active=document.getElementById('chat-input').value.trim()&&!chatLoading;btn.style.background=active?'var(--green)':'#E0E0E0';btn.style.cursor=active?'pointer':'default';btn.style.boxShadow=active?'0 4px 0 var(--green-dark)':'none';}
+
+function endSession(){
+  if(messages.length<2){showList();return;}
+  const score=words.length>0?Math.round(usedWords.size/words.length*100):0;
+  sessions.unshift({id:Date.now(),date:new Date().toLocaleDateString('ja-JP',{month:'short',day:'numeric',weekday:'short'}),time:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),words:words.map(w=>w.word),usedWords:[...usedWords],messages,score});
+  if(sessions.length>30)sessions.pop();
+  usedWords.forEach(word=>{mastery[word]=(mastery[word]||0)+1;});
+  saveAll(); showList();
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+// ── History ──
+function renderHistory(){
+  const entries=Object.entries(mastery).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('mastery-section').innerHTML=entries.length===0?'':
+    `<div class="card" style="margin-bottom:20px"><div style="font-size:14px;font-weight:800;margin-bottom:14px">🏆 習熟度</div>${entries.map(([word,count])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:14px;font-weight:700">${word}</span><span style="font-size:12px;color:var(--muted);font-weight:600">${count}回使用</span></div><div class="mastery-bar-wrap"><div class="mastery-bar-fill" style="width:${Math.min(count*15,100)}%;background:${count>=5?'var(--green)':count>=3?'var(--yellow)':'var(--blue)'}"></div></div></div>`).join('')}</div>`;
+  document.getElementById('session-list').innerHTML=sessions.length===0
+    ?'<div style="text-align:center;padding:48px 0;color:var(--muted);font-size:15px">まだ記録がないよ！<br>会話練習をはじめよう 🚀</div>'
+    :sessions.map((s,i)=>{const sc=s.score>=80?'var(--green)':s.score>=50?'var(--yellow)':'var(--red)';return `<div onclick="showDetail(${i})" style="background:var(--card);border-radius:20px;padding:16px 20px;margin-bottom:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:2px solid transparent;transition:border .15s" onmouseenter="this.style.borderColor='var(--blue)'" onmouseleave="this.style.borderColor='transparent'"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">${s.date} ${s.time}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${s.words.map(w=>`<span style="font-size:12px;padding:3px 10px;border-radius:12px;font-weight:700;background:${s.usedWords.includes(w)?'var(--green-light)':'#F0F0F0'};color:${s.usedWords.includes(w)?'var(--green-dark)':'var(--muted)'}">${w}</span>`).join('')}</div></div><div style="font-size:24px;font-weight:800;color:${sc};margin-left:12px">${s.score}%</div></div></div>`;}).join('');
+}
+
+function showDetail(i){
+  const s=sessions[i];
+  const sc=s.score>=80?'var(--green)':s.score>=50?'var(--yellow)':'var(--red)';
+  const wordObjs=words.filter(w=>s.words.includes(w.word));
+  document.getElementById('detail-content').innerHTML=`
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600">${s.date} ${s.time}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${s.words.map(w=>`<span style="padding:5px 12px;border-radius:20px;font-size:13px;font-weight:700;background:${s.usedWords.includes(w)?'var(--green-light)':'#F0F0F0'};color:${s.usedWords.includes(w)?'var(--green-dark)':'var(--muted)'}">${s.usedWords.includes(w)?'✓ ':''}${w}</span>`).join('')}</div>
+      <div style="font-size:28px;font-weight:800;color:${sc}">${s.score}%</div>
+    </div>
+    ${s.messages.slice(1).map(m=>`<div style="margin-bottom:12px;display:flex;justify-content:${m.role==='user'?'flex-end':'flex-start'}"><div style="max-width:80%;padding:12px 16px;border-radius:${m.role==='user'?'18px 18px 4px 18px':'18px 18px 18px 4px'};background:${m.role==='user'?'var(--blue)':'var(--card)'};color:${m.role==='user'?'#fff':'var(--text)'};font-size:14px;line-height:1.6;box-shadow:0 1px 4px rgba(0,0,0,0.08)">${m.role==='assistant'?highlightWords(m.content):escHtml(m.content)}</div></div>`).join('')}`;
+  showScreen('screen-detail');
+}
+
+// ── Init ──
+renderList();
+</script>
+</body>
+</html>
