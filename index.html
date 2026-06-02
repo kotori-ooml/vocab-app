@@ -110,16 +110,26 @@ body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #
     <input id="search-input" class="input-field" placeholder="単語を検索..." style="padding-left:40px" oninput="renderList()">
   </div>
 
-  <!-- Sort & Filter -->
-  <div class="filter-bar" id="filter-bar">
-    <button class="filter-chip active" data-filter="all" onclick="setFilter('all')">すべて</button>
-    <button class="filter-chip" data-filter="noun" onclick="setFilter('noun')">名詞</button>
-    <button class="filter-chip" data-filter="verb" onclick="setFilter('verb')">動詞</button>
-    <button class="filter-chip" data-filter="adj" onclick="setFilter('adj')">形容詞</button>
-    <button class="filter-chip" data-filter="adv" onclick="setFilter('adv')">副詞</button>
-    <button class="filter-chip" data-filter="other" onclick="setFilter('other')">その他</button>
-    <button class="filter-chip" data-sort="added" onclick="setSort('added')">追加順</button>
-    <button class="filter-chip" data-sort="alpha" onclick="setSort('alpha')">A→Z</button>
+  <!-- Sort & Filter: 3-category design -->
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <!-- 品詞別 -->
+    <div style="position:relative;flex:1">
+      <button id="pos-btn" onclick="togglePOSMenu()" style="width:100%;padding:10px 12px;border-radius:14px;border:2px solid var(--border);background:var(--card);font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:space-between;gap:4px">
+        <span id="pos-btn-label">品詞別</span><span style="font-size:10px">▼</span>
+      </button>
+      <div id="pos-menu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card);border:2px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:50;overflow:hidden">
+        <button onclick="setFilter('all')" data-pos-opt="all" style="width:100%;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;font-family:inherit;transition:background .1s" onmouseenter="this.style.background='#F7F7F7'" onmouseleave="this.style.background='none'">すべて</button>
+        <button onclick="setFilter('noun')" data-pos-opt="noun" style="width:100%;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;font-family:inherit;transition:background .1s" onmouseenter="this.style.background='#F7F7F7'" onmouseleave="this.style.background='none'">名詞</button>
+        <button onclick="setFilter('verb')" data-pos-opt="verb" style="width:100%;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;font-family:inherit;transition:background .1s" onmouseenter="this.style.background='#F7F7F7'" onmouseleave="this.style.background='none'">動詞</button>
+        <button onclick="setFilter('adj')" data-pos-opt="adj" style="width:100%;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;font-family:inherit;transition:background .1s" onmouseenter="this.style.background='#F7F7F7'" onmouseleave="this.style.background='none'">形容詞</button>
+        <button onclick="setFilter('adv')" data-pos-opt="adv" style="width:100%;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;font-family:inherit;transition:background .1s" onmouseenter="this.style.background='#F7F7F7'" onmouseleave="this.style.background='none'">副詞</button>
+        <button onclick="setFilter('other')" data-pos-opt="other" style="width:100%;padding:10px 16px;border:none;background:none;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;font-family:inherit;transition:background .1s" onmouseenter="this.style.background='#F7F7F7'" onmouseleave="this.style.background='none'">その他</button>
+      </div>
+    </div>
+    <!-- アルファベット順 -->
+    <button id="sort-alpha-btn" onclick="setSort('alpha')" style="flex:1;padding:10px 12px;border-radius:14px;border:2px solid var(--border);background:var(--card);font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s">A → Z</button>
+    <!-- 追加順 -->
+    <button id="sort-added-btn" onclick="setSort('added')" style="flex:1;padding:10px 12px;border-radius:14px;border:2px solid var(--blue);background:var(--blue-light);font-size:13px;font-weight:800;color:var(--blue);cursor:pointer;font-family:inherit;transition:all .15s">追加順</button>
   </div>
 
   <!-- Add word -->
@@ -233,16 +243,49 @@ function showList() { renderList(); showScreen('screen-list'); }
 function showHistory() { renderHistory(); showScreen('screen-history'); }
 
 // ── Filter / Sort ──
+const POS_FILTER_LABELS = {all:'品詞別', noun:'名詞', verb:'動詞', adj:'形容詞', adv:'副詞', other:'その他'};
+
+function togglePOSMenu() {
+  const menu = document.getElementById('pos-menu');
+  const isOpen = menu.style.display !== 'none';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // close on outside click
+    setTimeout(() => document.addEventListener('click', closePOSMenu, {once:true}), 10);
+  }
+}
+function closePOSMenu() { document.getElementById('pos-menu').style.display = 'none'; }
+
 function setFilter(f) {
   currentFilter = f;
-  document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active', b.dataset.filter===f));
+  // Update POS button label
+  const btn = document.getElementById('pos-btn');
+  const label = document.getElementById('pos-btn-label');
+  if (f === 'all') {
+    btn.style.borderColor = 'var(--border)'; btn.style.background = 'var(--card)'; btn.style.color = 'var(--muted)';
+    label.textContent = '品詞別';
+  } else {
+    btn.style.borderColor = 'var(--purple)'; btn.style.background = 'var(--purple-light)'; btn.style.color = 'var(--purple)';
+    label.textContent = POS_FILTER_LABELS[f] || f;
+  }
+  document.getElementById('pos-menu').style.display = 'none';
   renderList();
 }
+
 function setSort(s) {
   currentSort = s;
-  document.querySelectorAll('[data-sort]').forEach(b=>b.classList.toggle('active', b.dataset.sort===s));
+  const alphaBtn = document.getElementById('sort-alpha-btn');
+  const addedBtn = document.getElementById('sort-added-btn');
+  if (s === 'alpha') {
+    alphaBtn.style.borderColor = 'var(--blue)'; alphaBtn.style.background = 'var(--blue-light)'; alphaBtn.style.color = 'var(--blue)';
+    addedBtn.style.borderColor = 'var(--border)'; addedBtn.style.background = 'var(--card)'; addedBtn.style.color = 'var(--muted)';
+  } else {
+    addedBtn.style.borderColor = 'var(--blue)'; addedBtn.style.background = 'var(--blue-light)'; addedBtn.style.color = 'var(--blue)';
+    alphaBtn.style.borderColor = 'var(--border)'; alphaBtn.style.background = 'var(--card)'; alphaBtn.style.color = 'var(--muted)';
+  }
   renderList();
 }
+
 function selectPOS(p) {
   selectedPOS = p;
   document.querySelectorAll('[data-pos]').forEach(b=>b.classList.toggle('active', b.dataset.pos===p));
