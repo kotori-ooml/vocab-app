@@ -43,7 +43,7 @@ body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #
 #toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px); background:var(--green); color:#fff; border-radius:20px; padding:10px 20px; font-size:15px; font-weight:800; z-index:200; box-shadow:0 4px 20px rgba(88,204,2,0.4); transition:transform .3s ease; white-space:nowrap; }
 #toast.show { transform:translateX(-50%) translateY(0); }
 #celebration { position:fixed; top:0; left:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; pointer-events:none; z-index:100; font-size:80px; }
-#celebration.show { display:flex; animation:popIn .8s ease; }
+#celebration.show { display:flex; animation:popIn .7s cubic-bezier(.34,1.56,.64,1); }
 .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); display:inline-block; margin:0 3px; animation:bounce 1s ease infinite; }
 .dot:nth-child(2){animation-delay:.18s} .dot:nth-child(3){animation-delay:.36s}
 .hl { background:#FFF3B0; border-radius:4px; padding:1px 3px; font-weight:700; color:#E5900A; }
@@ -91,8 +91,12 @@ body { font-family: 'Nunito', 'Helvetica Neue', Arial, sans-serif; background: #
 </head>
 <body>
 
-<div id="toast">🎉 使えた！</div>
-<div id="celebration">⭐</div>
+<div id="toast">使えた！</div>
+<div id="celebration" style="position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:100">
+  <svg width="90" height="90" viewBox="0 0 24 24" fill="none" stroke="#FFC800" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 16px #FFC80088)">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+</div>
 
 <!-- Modal -->
 <div id="modal-overlay" onclick="closeModal()">
@@ -201,8 +205,7 @@ let words = JSON.parse(localStorage.getItem('vocab_words')||'null') || [
 ];
 let mastery = JSON.parse(localStorage.getItem('vocab_mastery')||'{}');
 let sessions = JSON.parse(localStorage.getItem('vocab_sessions')||'[]');
-let messages = [], usedWords = new Set();
-let flashIndex = 0, flipped = false, chatLoading = false;
+let flashIndex = 0, flipped = false;
 let currentFilter = 'all', currentSort = 'added', selectedPOS = 'noun';
 
 const COLORS = [
@@ -334,13 +337,16 @@ function renderList() {
             <button onclick="openWordModal(${w.id})" class="btn-edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             <button onclick="deleteWord(${w.id})" style="background:#FFF0F0;border:none;border-radius:10px;width:32px;height:32px;color:#FF8080;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>
           </div>
-          ${exCount>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">${(w.examples||[]).slice(0,1).map(e=>`<div style="font-size:12px;color:var(--muted);font-style:italic">${e}</div>`).join('')}${exCount>1?`<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px">+${exCount-1}件の例文</div>`:''}</div>`:''}
+          ${exCount>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--muted);font-style:italic">${escHtml((w.examples||[])[0])}</div>
+            ${exCount>1?`<button onclick="event.stopPropagation();toggleExamples(${w.id})" id="ex-toggle-${w.id}" style="background:none;border:none;color:var(--blue);font-size:12px;font-weight:800;cursor:pointer;padding:4px 0;margin-top:4px">+ ${exCount-1}</button>
+            <div id="ex-extra-${w.id}" style="display:none">${(w.examples||[]).slice(1).map(e=>`<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px">${escHtml(e)}</div>`).join('')}</div>`:''}</div>`:''}
         </div>`;
       }).join('');
 
-  const streak = sessions.length;
+  const streak = calcStreak();
   const badge = document.getElementById('streak-badge');
-  if (streak>0){badge.style.display='block';badge.textContent='🔥 '+streak;}
+  if (streak>0){badge.style.display='block';badge.textContent='🔥 '+streak+'日';}
   else badge.style.display='none';
   document.getElementById('action-btns').style.display = words.length>0?'flex':'none';
 }
@@ -401,7 +407,7 @@ function renderExampleItem(example, index, wordId) {
       <input id="ex-edit-${index}" class="input-field" value="${escAttr(example)}" style="display:none;font-size:13px;padding:6px 10px;margin-top:4px">
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0;margin-top:2px">
-      <button class="btn-sm" id="ex-edit-btn-${index}" style="background:var(--blue-light);color:var(--blue)" onclick="toggleExEdit(${index})">✏️</button>
+      <button class="btn-sm" id="ex-edit-btn-${index}" style="background:var(--blue-light);color:var(--blue);display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0" onclick="toggleExEdit(${index})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
       <button class="btn-sm" id="ex-save-btn-${index}" style="background:var(--green-light);color:var(--green-dark);display:none" onclick="saveExEdit(${wordId},${index})">✓</button>
       <button class="btn-sm" style="background:#FFF0F0;color:#FF8080" onclick="deleteExample(${wordId},${index})">×</button>
     </div>
@@ -477,12 +483,96 @@ function closeModal() {
   editingPOS = null;
 }
 
-// ── Flashcard ──
+// ── Sound Engine ──
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playSE(type) {
+  try {
+    const ctx = getAudioCtx();
+
+    if (type === 'flip') {
+      // Natural card whoosh — short filtered noise burst
+      const bufSize = ctx.sampleRate * 0.06;
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1800;
+      filter.Q.value = 0.8;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+      src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      src.start(); src.stop(ctx.currentTime + 0.06);
+
+    } else if (type === 'next') {
+      // Duolingo-style crisp ding — clean sine with fast attack
+      const freqs = [784, 1047];
+      freqs.forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.09;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.22, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        o.start(t); o.stop(t + 0.2);
+      });
+
+    } else if (type === 'complete') {
+      // Satisfying 4-note fanfare
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.11;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.22, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        o.start(t); o.stop(t + 0.25);
+      });
+    }
+  } catch(e) {}
+}
+
+function speak(text, rate = 0.9) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = rate;
+  utter.pitch = 1.0;
+  // Prefer a natural English voice
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => v.lang === 'en-US' && v.name.includes('Samantha'))
+    || voices.find(v => v.lang === 'en-US' && !v.name.includes('Google'))
+    || voices.find(v => v.lang.startsWith('en'));
+  if (preferred) utter.voice = preferred;
+  window.speechSynthesis.speak(utter);
+}
+
+// Preload voices
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
 function startFlash() {
   const list = getFilteredWords();
   if (list.length===0) return;
   flashIndex=0; flipped=false;
   renderFlash(list); showScreen('screen-flash');
+  setTimeout(() => speak(list[0].word), 400);
 }
 
 function renderFlash(list) {
@@ -499,153 +589,133 @@ function renderFlash(list) {
     fc.style.background=col.bg; fc.style.borderColor=col.accent+'44'; fc.style.boxShadow=`0 8px 0 ${col.accent}22`;
     fc.innerHTML = `
       <div style="font-size:36px;font-weight:800;color:${col.accent};margin-bottom:8px">${card.word}</div>
-      <span class="pos-badge ${POS_CLASS[card.pos]||'pos-other'}" style="margin-bottom:14px">${POS_LABELS[card.pos]||'その他'}</span>
-      ${count>0?`<div style="background:var(--yellow-light);border-radius:12px;padding:4px 12px;font-size:12px;font-weight:800;color:#E5900A;margin-bottom:12px">🔥 ${count}回使用済み</div>`:''}
-      <div style="font-size:13px;color:${col.accent}99;font-weight:700;letter-spacing:.1em;margin-top:8px">タップして意味を見る 👆</div>`;
+      <span class="pos-badge ${POS_CLASS[card.pos]||'pos-other'}" style="margin-bottom:12px">${POS_LABELS[card.pos]||'その他'}</span>
+      <button onclick="event.stopPropagation();speak('${card.word.replace(/'/g,"\\'")}', 0.85)" style="background:${col.accent}22;border:none;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin:8px auto 12px;transition:background .15s" onmouseenter="this.style.background='${col.accent}44'" onmouseleave="this.style.background='${col.accent}22'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${col.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      ${count>0?`<div style="background:var(--yellow-light);border-radius:12px;padding:4px 12px;font-size:12px;font-weight:800;color:#E5900A;margin-bottom:8px">🔥 ${count}回</div>`:''}
+      <div style="font-size:12px;color:${col.accent}99;font-weight:700;letter-spacing:.1em;margin-top:4px">タップして意味を見る</div>`;
     document.getElementById('flash-next').style.display='none';
   } else {
     fc.style.background='#fff'; fc.style.borderColor=col.accent+'33'; fc.style.boxShadow='0 8px 30px rgba(0,0,0,0.1)';
     fc.innerHTML = `
-      <div style="font-size:20px;font-weight:800;color:${col.accent};margin-bottom:8px">${card.word}</div>
-      <div style="font-size:18px;font-weight:700;color:var(--text);line-height:1.6;margin-bottom:14px">${card.meaning}</div>
-      ${examples.length>0?`<div style="width:100%">${examples.map(e=>`<div style="font-size:13px;color:var(--muted);font-style:italic;line-height:1.6;background:#F7F7F7;border-radius:12px;padding:8px 12px;margin-bottom:6px;text-align:left">"${escHtml(e)}"</div>`).join('')}</div>`:''}`;
+      <div style="font-size:20px;font-weight:800;color:${col.accent};margin-bottom:4px">${card.word}</div>
+      <button onclick="event.stopPropagation();speak('${card.word.replace(/'/g,"\\'")}', 0.85)" style="background:${col.accent}18;border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin:4px auto 10px;transition:background .15s" onmouseenter="this.style.background='${col.accent}33'" onmouseleave="this.style.background='${col.accent}18'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${col.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <div style="font-size:18px;font-weight:700;color:var(--text);line-height:1.6;margin-bottom:12px">${card.meaning}</div>
+      ${examples.length>0?`<div style="width:100%">${examples.map((e,ei)=>`<div style="font-size:13px;color:var(--muted);font-style:italic;line-height:1.6;background:#F7F7F7;border-radius:12px;padding:8px 12px;margin-bottom:6px;text-align:left;display:flex;align-items:flex-start;gap:8px"><span style="flex:1">"${escHtml(e)}"</span><button onclick="event.stopPropagation();speak('${e.replace(/'/g,"\\'").replace(/"/g,'\\"')}', 0.85)" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#AFAFAF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button></div>`).join('')}</div>`:''}`;
     const nb=document.getElementById('flash-next');
     nb.style.display='block';
     nb.textContent = flashIndex===list.length-1?'🎉 完了！':'次へ →';
   }
 }
 
-function flipCard() { flipped=!flipped; renderFlash(); }
+function flipCard() {
+  flipped = !flipped;
+  playSE('flip');
+  renderFlash();
+}
 
 function nextCard() {
-  celebrate();
   const list = getFilteredWords();
-  if (flashIndex<list.length-1){flashIndex++;flipped=false;setTimeout(()=>renderFlash(list),200);}
-  else setTimeout(()=>showList(),1000);
+  if (flashIndex < list.length - 1) {
+    playSE('next');
+    celebrate();
+    flashIndex++; flipped = false;
+    setTimeout(() => { renderFlash(list); speak(list[flashIndex].word); }, 200);
+  } else {
+    playSE('complete');
+    celebrate();
+    recordSession();
+    setTimeout(() => showList(), 1200);
+  }
 }
 
 function celebrate() {
-  const el=document.getElementById('celebration');
-  el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),900);
+  const el = document.getElementById('celebration');
+  el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 900);
 }
 
-// ── Chat ──
-const SYSTEM_PROMPT = () => `You are a fun, encouraging English coach helping a Japanese student practice vocabulary. Be warm, brief, and playful.
-
-Today's target words: ${words.map(w=>`"${w.word}" (${w.meaning}, ${POS_LABELS[w.pos]||''})`).join(', ')}
-
-Rules:
-1. Short, natural English conversation.
-2. Encourage using target words naturally.
-3. Celebrate correct usage: "🎉 Great use of '___'!"
-4. Gently correct errors + brief Japanese note in parentheses.
-5. Keep replies 2-3 sentences max.
-6. Nudge after a few turns: "Can you try using '___' next?"
-
-Start with a warm greeting and a question that leads toward using one of the target words.`;
-
-async function startChat() {
-  messages=[]; usedWords=new Set(); chatLoading=true;
-  showScreen('screen-chat');
-  renderChatChips(); updateChatScore();
-  document.getElementById('chat-messages').innerHTML='';
-  showTyping();
-  try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT(),messages:[{role:'user',content:"Hello! I'm ready to practice!"}]}),
-    });
-    const data=await res.json();
-    const reply=data.content?.[0]?.text||"Let's go! 🎉";
-    messages=[{role:'user',content:"Hello! I'm ready to practice!"},{role:'assistant',content:reply}];
-    hideTyping(); appendBubble('assistant',reply);
-  } catch { hideTyping(); appendBubble('assistant',"Oops! Connection error 🙏"); }
-  chatLoading=false; updateSendBtn();
+function toggleExamples(wordId) {
+  const extra = document.getElementById(`ex-extra-${wordId}`);
+  const btn = document.getElementById(`ex-toggle-${wordId}`);
+  const word = words.find(w=>w.id===wordId);
+  if (!extra || !btn || !word) return;
+  const isOpen = extra.style.display !== 'none';
+  extra.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? `+ ${(word.examples||[]).length - 1}` : '− 閉じる';
 }
 
-async function sendMessage() {
-  const inp=document.getElementById('chat-input');
-  const text=inp.value.trim();
-  if(!text||chatLoading)return;
-  inp.value=''; updateSendBtn();
-  let newlyUsed=null;
-  words.forEach(w=>{if(text.toLowerCase().includes(w.word.toLowerCase())&&!usedWords.has(w.word)){usedWords.add(w.word);newlyUsed=w.word;}});
-  if(newlyUsed) showToast(`🎉 "${newlyUsed}" 使えた！`);
-  renderChatChips(); updateChatScore();
-  messages.push({role:'user',content:text});
-  appendBubble('user',text);
-  chatLoading=true; showTyping();
-  try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT(),messages}),
-    });
-    const data=await res.json();
-    const reply=data.content?.[0]?.text||'...';
-    messages.push({role:'assistant',content:reply});
-    hideTyping(); appendBubble('assistant',reply);
-  } catch { hideTyping(); appendBubble('assistant',"Oops! Try again 🙏"); }
-  chatLoading=false; updateSendBtn();
-}
-
-function appendBubble(role,text) {
-  const wrap=document.createElement('div');
-  wrap.style.cssText=`margin-bottom:14px;display:flex;justify-content:${role==='user'?'flex-end':'flex-start'};align-items:flex-end;gap:8px;animation:slideDown .3s ease`;
-  if(role==='assistant'){const av=document.createElement('div');av.style.cssText='width:32px;height:32px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0';av.textContent='🦜';wrap.appendChild(av);}
-  const bub=document.createElement('div');
-  bub.className=role==='user'?'bubble-user':'bubble-ai';
-  bub.innerHTML=role==='assistant'?highlightWords(text):escHtml(text);
-  wrap.appendChild(bub);
-  document.getElementById('chat-messages').appendChild(wrap);
-  wrap.scrollIntoView({behavior:'smooth',block:'end'});
-}
-
-let typingEl=null;
-function showTyping(){typingEl=document.createElement('div');typingEl.style.cssText='margin-bottom:14px;display:flex;align-items:flex-end;gap:8px';typingEl.innerHTML='<div style="width:32px;height:32px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:16px">🦜</div><div class="bubble-ai"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';document.getElementById('chat-messages').appendChild(typingEl);typingEl.scrollIntoView({behavior:'smooth',block:'end'});}
-function hideTyping(){if(typingEl){typingEl.remove();typingEl=null;}}
-
-function highlightWords(text){let r=escHtml(text);words.forEach(w=>{const re=new RegExp(`(${escRegex(w.word)})`,'gi');r=r.replace(re,'<span class="hl">$1</span>');});return r;}
 function escHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttr(t){return t.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function escRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-function renderChatChips(){document.getElementById('chat-chips').innerHTML=words.map(w=>`<div class="chip ${usedWords.has(w.word)?'chip-used':'chip-unused'}">${usedWords.has(w.word)?'✓ ':''}${w.word}</div>`).join('');}
-function updateChatScore(){document.getElementById('chat-score').textContent=`${usedWords.size}/${words.length}`;}
-function updateSendBtn(){const btn=document.getElementById('send-btn');const active=document.getElementById('chat-input').value.trim()&&!chatLoading;btn.style.background=active?'var(--green)':'#E0E0E0';btn.style.cursor=active?'pointer':'default';btn.style.boxShadow=active?'0 4px 0 var(--green-dark)':'none';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
-function endSession(){
-  if(messages.length<2){showList();return;}
-  const score=words.length>0?Math.round(usedWords.size/words.length*100):0;
-  sessions.unshift({id:Date.now(),date:new Date().toLocaleDateString('ja-JP',{month:'short',day:'numeric',weekday:'short'}),time:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),words:words.map(w=>w.word),usedWords:[...usedWords],messages,score});
-  if(sessions.length>30)sessions.pop();
-  usedWords.forEach(word=>{mastery[word]=(mastery[word]||0)+1;});
-  saveAll(); showList();
+// ── Session Recording (on flash complete) ──
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
 }
 
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function recordSession() {
+  const dk = todayKey();
+  const session = {
+    id: Date.now(),
+    dateKey: dk,
+    date: new Date().toLocaleDateString('ja-JP',{month:'short',day:'numeric',weekday:'short'}),
+    time: new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),
+    words: getFilteredWords().map(w=>w.word),
+    cardCount: getFilteredWords().length,
+  };
+  // Don't add duplicate if already recorded today (but still update mastery)
+  const alreadyToday = sessions.some(s => s.dateKey === dk);
+  if (!alreadyToday) {
+    sessions.unshift(session);
+    if (sessions.length > 90) sessions.pop();
+  }
+  saveAll();
+}
+
+function calcStreak() {
+  // Get unique dateKeys sorted descending
+  const keys = [...new Set(sessions.map(s => s.dateKey).filter(Boolean))].sort().reverse();
+  if (keys.length === 0) return 0;
+  const today = todayKey();
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate()-1); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; })();
+  // Streak must include today or yesterday to be active
+  if (keys[0] !== today && keys[0] !== yesterday) return 0;
+  let streak = 1;
+  for (let i = 1; i < keys.length; i++) {
+    const prev = new Date(keys[i-1]);
+    const curr = new Date(keys[i]);
+    const diff = Math.round((prev - curr) / 86400000);
+    if (diff === 1) streak++;
+    else break;
+  }
+  return streak;
+}
 
 // ── History ──
 function renderHistory(){
   const entries=Object.entries(mastery).sort((a,b)=>b[1]-a[1]);
   document.getElementById('mastery-section').innerHTML=entries.length===0?'':
-    `<div class="card" style="margin-bottom:20px"><div style="font-size:14px;font-weight:800;margin-bottom:14px">🏆 習熟度</div>${entries.map(([word,count])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:14px;font-weight:700">${word}</span><span style="font-size:12px;color:var(--muted);font-weight:600">${count}回使用</span></div><div class="mastery-bar-wrap"><div class="mastery-bar-fill" style="width:${Math.min(count*15,100)}%;background:${count>=5?'var(--green)':count>=3?'var(--yellow)':'var(--blue)'}"></div></div></div>`).join('')}</div>`;
+    `<div class="card" style="margin-bottom:20px"><div style="font-size:14px;font-weight:800;margin-bottom:14px">🏆 習熟度</div>${entries.map(([word,count])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:14px;font-weight:700">${word}</span><span style="font-size:12px;color:var(--muted);font-weight:600">${count}回</span></div><div class="mastery-bar-wrap"><div class="mastery-bar-fill" style="width:${Math.min(count*20,100)}%;background:${count>=5?'var(--green)':count>=3?'var(--yellow)':'var(--blue)'}"></div></div></div>`).join('')}</div>`;
   document.getElementById('session-list').innerHTML=sessions.length===0
-    ?'<div style="text-align:center;padding:48px 0;color:var(--muted);font-size:15px">まだ記録がないよ！<br>会話練習をはじめよう 🚀</div>'
-    :sessions.map((s,i)=>{const sc=s.score>=80?'var(--green)':s.score>=50?'var(--yellow)':'var(--red)';return `<div onclick="showDetail(${i})" style="background:var(--card);border-radius:20px;padding:16px 20px;margin-bottom:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:2px solid transparent;transition:border .15s" onmouseenter="this.style.borderColor='var(--blue)'" onmouseleave="this.style.borderColor='transparent'"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">${s.date} ${s.time}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${s.words.map(w=>`<span style="font-size:12px;padding:3px 10px;border-radius:12px;font-weight:700;background:${s.usedWords.includes(w)?'var(--green-light)':'#F0F0F0'};color:${s.usedWords.includes(w)?'var(--green-dark)':'var(--muted)'}">${w}</span>`).join('')}</div></div><div style="font-size:24px;font-weight:800;color:${sc};margin-left:12px">${s.score}%</div></div></div>`;}).join('');
-}
-
-function showDetail(i){
-  const s=sessions[i];
-  const sc=s.score>=80?'var(--green)':s.score>=50?'var(--yellow)':'var(--red)';
-  const wordObjs=words.filter(w=>s.words.includes(w.word));
-  document.getElementById('detail-content').innerHTML=`
-    <div class="card" style="margin-bottom:16px">
-      <div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600">${s.date} ${s.time}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${s.words.map(w=>`<span style="padding:5px 12px;border-radius:20px;font-size:13px;font-weight:700;background:${s.usedWords.includes(w)?'var(--green-light)':'#F0F0F0'};color:${s.usedWords.includes(w)?'var(--green-dark)':'var(--muted)'}">${s.usedWords.includes(w)?'✓ ':''}${w}</span>`).join('')}</div>
-      <div style="font-size:28px;font-weight:800;color:${sc}">${s.score}%</div>
-    </div>
-    ${s.messages.slice(1).map(m=>`<div style="margin-bottom:12px;display:flex;justify-content:${m.role==='user'?'flex-end':'flex-start'}"><div style="max-width:80%;padding:12px 16px;border-radius:${m.role==='user'?'18px 18px 4px 18px':'18px 18px 18px 4px'};background:${m.role==='user'?'var(--blue)':'var(--card)'};color:${m.role==='user'?'#fff':'var(--text)'};font-size:14px;line-height:1.6;box-shadow:0 1px 4px rgba(0,0,0,0.08)">${m.role==='assistant'?highlightWords(m.content):escHtml(m.content)}</div></div>`).join('')}`;
-  showScreen('screen-detail');
+    ?'<div style="text-align:center;padding:48px 0;color:var(--muted);font-size:15px">まだ記録がないよ！<br>フラッシュカードをやってみよう 🚀</div>'
+    :sessions.map((s,i)=>`<div style="background:var(--card);border-radius:20px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">${s.date} ${s.time}</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text)">${s.cardCount}枚 完了 ✓</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${(s.words||[]).slice(0,4).map(w=>`<span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;background:#F0F0F0;color:var(--muted)">${w}</span>`).join('')}${(s.words||[]).length>4?`<span style="font-size:11px;color:var(--muted);font-weight:600">+${s.words.length-4}</span>`:''}</div>
+          </div>
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;margin-left:12px;flex-shrink:0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46A302" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+      </div>`).join('');
 }
 
 // ── Init ──
